@@ -4,10 +4,12 @@ version = "0.1.0"
 description = ""
 authors = ["Timofey Volkov <volkow.timofey@ya.ru>"]
 readme = "README.md"
-packages = [{include = "test_isfront"}]
+packages = [{include = "xml_rpc"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+psycopg2-binary = "^2.9.9"
+python-dotenv = "^1.0.1"
 
 
 [build-system]

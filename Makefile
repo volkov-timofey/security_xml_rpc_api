@@ -3,26 +3,15 @@
 install:
 	poetry install
 
-start:
-	poetry run python -m gunicorn task_manager.asgi:application -k uvicorn.workers.UvicornWorker
-	
+PORT ?= 8000	
+#start_server:
+	#poetry run python page_analyzer:app
+
+#start_client:
+	#poetry run python page_analyzer:app
+
 lint: # run_linter
-	poetry run flake8 task_manager
+	poetry run flake8 xml_rpc
 	
 build:
 	./build.sh
-	
-stop:
-	sudo fuser -k 8000/tcp
-
-dev:
-	poetry run python manage.py runserver
-
-test:
-	poetry run coverage run --source='.' manage.py test
-
-test-report:
-	poetry run coverage report
-
-test-coverage-xml:
-	poetry run coverage xml -o coverage.xml
