@@ -4,13 +4,13 @@ install:
 	poetry install
 
 PORT ?= 8000	
-#start_server:
-	#poetry run python page_analyzer:app
+start_server:
+	poetry run python xml_rpc/server.py
 
-#start_client:
-	#poetry run python page_analyzer:app
+start_client:
+	poetry run python xml_rpc/client.py
 
-lint: # run_linter
+lint:
 	poetry run flake8 xml_rpc
 	
 build:

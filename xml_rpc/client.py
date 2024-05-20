@@ -38,6 +38,7 @@ class XML_RPC_Client:
         """
         generator_client_key = DH_KeyGenerator()
         partial_client_key = generator_client_key.generate_partial_key()
+
         response = self.proxy.get_secret(
             self.session_id,
             partial_client_key,

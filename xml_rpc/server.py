@@ -28,7 +28,7 @@ class XML_RPC_Server:
         self.data_base = data_base
 
         if test_mode:
-            DataBase(self.data_base).add_user()
+            DataBase(self.data_base)._add_test_user()
 
     def authorization(self, login: str, password: str) -> client.dumps:
         """
@@ -36,16 +36,15 @@ class XML_RPC_Server:
         """
         db = DataBase(self.data_base)
         hash_password = encrypt_password(password)
-        is_check_login_password = db.get_pair_login_password(login,
-                                                             hash_password)
+        current_user = db.get_pair_login_password(login)
+        login_id, login, pass_from_db = current_user
 
-        if not is_check_login_password:
+        if not current_user or hash_password != pass_from_db:
             return client.dumps(
                 client.Fault(401, 'Error authorization, please try again'),
                 methodresponse=True
             )
 
-        print('create_session')
         start_session_time = datetime.datetime.now()
         fin_session_time = start_session_time + datetime.timedelta(
             seconds=self.max_len_session_in_sec)
@@ -56,7 +55,7 @@ class XML_RPC_Server:
 
         db.add_session(
             session_id,
-            login,
+            login_id,
             start_session_time,
             fin_session_time
         )
@@ -70,7 +69,8 @@ class XML_RPC_Server:
         with client public data
         """
         db = DataBase(self.data_base)
-        if not db.is_active_session(session_id):
+        _, fin_session_time = db.get_active_session(session_id)
+        if fin_session_time < datetime.datetime.now():
             return client.dumps(
                 client.Fault(
                     401,
@@ -78,7 +78,6 @@ class XML_RPC_Server:
                 ),
                 methodresponse=True
             )
-
         gen_server_key = DH_KeyGenerator(public_g, public_p)
         partial_server_key = gen_server_key.generate_partial_key()
         private_key = gen_server_key.generate_full_key(partial_client_key)
@@ -89,22 +88,26 @@ class XML_RPC_Server:
 
     def get_challenge(self, session_id: str):
         db = DataBase(self.data_base)
-        if db.is_active_session(session_id):
-            session_challenge = secrets.token_urlsafe()
-            db.add_challenge(session_id, session_challenge)
-            return client.dumps((session_challenge,), methodresponse=True)
+        _, fin_session_time = db.get_active_session(session_id)
+        if fin_session_time < datetime.datetime.now():
+            return client.dumps(
+                client.Fault(
+                    401,
+                    'Your session is terminate, please start new session'
+                ),
+                methodresponse=True
+            )
 
-        return client.dumps(
-            client.Fault(
-                401,
-                'Your session is terminate, please start new session'
-            ),
-            methodresponse=True
-        )
+        session_challenge = secrets.token_urlsafe()
+        print('session_challenge', session_challenge)
+        db.add_challenge(session_id, session_challenge)
+        return client.dumps((session_challenge,), methodresponse=True)
+
+
 
     def read_data_from_db(self, session_id: str, client_sign: str):
         db = DataBase(self.data_base)
-        if not db.is_active_session(session_id):
+        if not db.get_active_session(session_id):
             return client.dumps(
                 client.Fault(
                     401,
@@ -122,6 +125,7 @@ class XML_RPC_Server:
                      please try authorization again.'
                 )
             )
+        return 'Подписи идентичны'
         # выполнить выборку из БД
         # вернуть полученное значение.
 
@@ -129,4 +133,6 @@ class XML_RPC_Server:
 if __name__ == '__main__':
     server = server.SimpleXMLRPCServer((HOST, PORT))
     server.register_instance(XML_RPC_Server())
+    print('Server run')
     server.serve_forever()
+

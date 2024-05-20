@@ -32,7 +32,7 @@ class DataBase:
         """
         connect.close()
 
-    def get_pair_login_password(self, login: str, password: str) -> list:
+    def get_pair_login_password(self, login: str) -> list:
         """
         Check information about user
         """
@@ -40,17 +40,17 @@ class DataBase:
         requests_ = """
             SELECT *
             FROM accounts
-            WHERE login = %s and password = %s;"""
+            WHERE login = %s;"""
         with connect.cursor() as cursor:
-            cursor.execute(requests_, (login, password,))
-            result = cursor.fetchall()
+            cursor.execute(requests_, (login,))
+            result = cursor.fetchone()
         self._close_connect_db(connect)
         return result
 
     def add_session(
             self,
             session_id: str,
-            login: str,
+            login_id: int,
             start_session_time: datetime,
             fin_session_time: datetime
     ):
@@ -59,34 +59,34 @@ class DataBase:
         """
         request_ = """
             INSERT INTO sessions \
-            (session_id, login, start_session_time, fin_session_time) \
-            VALUES (%s, %s, %s, %s,);
+            (session_id, login_id, start_session_time, fin_session_time) \
+            VALUES (%s, %s, %s, %s);
             """
 
         connect = self._connect_db()
         with connect.cursor() as cursor:
             cursor.execute(
                 request_,
-                (session_id, login, start_session_time, fin_session_time)
+                (session_id, login_id, start_session_time, fin_session_time)
             )
         connect.commit()
         self._close_connect_db(connect)
 
-    def is_active_session(self, session_id: str) -> bool:
+    def get_active_session(self, session_id: str) -> bool:
         """
         Get status session -> bool
         """
         connect = self._connect_db()
         request_ = """
-                    SELECT fin_session_time
+                    SELECT start_session_time, fin_session_time
                     FROM sessions
                     WHERE session_id = %s;"""
         with connect.cursor() as cursor:
             cursor.execute(request_, (session_id,))
-            result = cursor.fetchall()
+            result = cursor.fetchone()
         self._close_connect_db(connect)
 
-        return datetime.datetime.now() < result[0]
+        return result
 
     def add_private_key(self, session_id: str, private_key: str) -> None:
         """
@@ -95,7 +95,7 @@ class DataBase:
         request_ = """
                     INSERT INTO sessions_data \
                     (session_id, private_key) \
-                    VALUES (%s, %s,);
+                    VALUES (%s, %s);
                     """
 
         connect = self._connect_db()
@@ -107,21 +107,21 @@ class DataBase:
         connect.commit()
         self._close_connect_db(connect)
 
-    def add_challenge(self, session_id: str, active_challenge: str) -> None:
+    def add_challenge(self, session_id: str, current_challenge: str) -> None:
         """
         Save challenge user in sessions_data
         """
         request_ = """
-            INSERT INTO sessions_data \
-            (session_id, active_challenge) \
-            VALUES (%s, %s,);
+            UPDATE sessions_data
+            SET current_challenge=%s
+            WHERE session_id=%s;
             """
 
         connect = self._connect_db()
         with connect.cursor() as cursor:
             cursor.execute(
                 request_,
-                (session_id, active_challenge)
+                (current_challenge, session_id)
             )
         connect.commit()
         self._close_connect_db(connect)
@@ -151,7 +151,7 @@ class DataBase:
         requests_ = """
             INSERT INTO accounts \
             (login, password) \
-            VALUES (%s, %s,);
+            VALUES (%s, %s);
             """
         with connect.cursor() as cursor:
             cursor.execute(requests_, (login, encrypt_password(password)))
