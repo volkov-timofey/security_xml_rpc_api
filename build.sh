@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-make install && psql -a -d postgresql://work:myPassword@localhost:5432/database -f database.sql
+make install && psql -a -d "$DATABASE_URL" -f database.sql
