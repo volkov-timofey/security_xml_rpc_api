@@ -15,3 +15,5 @@ lint:
 	
 build:
 	./build.sh
+
+init_run_server: build start_server

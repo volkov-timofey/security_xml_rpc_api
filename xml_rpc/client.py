@@ -17,7 +17,7 @@ class XML_RPC_Client:
     def __init__(self, server_proxy: str):
         self.proxy = client.ServerProxy(server_proxy)
         self.session_id = None
-        self.private_key = None
+        self.private_key = str
         self.challenge = None
 
     def authorization(self, login: str, password: str) -> str:
@@ -47,9 +47,9 @@ class XML_RPC_Client:
         )
         try:
             partial_server_key = client.loads(response)[0][0]
-            self.private_key = generator_client_key.generate_full_key(
+            self.private_key = str(generator_client_key.generate_full_key(
                 partial_server_key
-            )
+            ))
 
             return self.private_key
 
@@ -77,13 +77,17 @@ class XML_RPC_Client:
         response = self.proxy.read_data_from_db(self.session_id, sign)
         try:
             value = client.loads(response)[0][0]
-            return value
+            return value if value else 'There are no completed sessions'
         except client.Fault as f:
             print(f.faultString)
 
 
 if __name__ == '__main__':
     client_ = XML_RPC_Client(URL_SERVER)
-    print(client_.authorization('login', 'password'))
-    print(client_.generate_private_key())
-    print(client_.get_challenge())
+    print(
+        f"Session for user - {client_.authorization('login', 'password')} \n"
+        f"Generated private key {client_.generate_private_key()} "
+        f"simplified for quick calculations \n"
+        f"Random challenge - {client_.get_challenge()} \n"
+        f"Selected data from db - {client_.read_data_from_db()}"
+    )

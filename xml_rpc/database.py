@@ -72,7 +72,7 @@ class DataBase:
         connect.commit()
         self._close_connect_db(connect)
 
-    def get_active_session(self, session_id: str) -> bool:
+    def get_active_session(self, session_id: str) -> tuple:
         """
         Get status session -> bool
         """
@@ -137,7 +137,7 @@ class DataBase:
             WHERE session_id = %s;"""
         with connect.cursor() as cursor:
             cursor.execute(requests_, (session_id,))
-            result = cursor.fetchall()
+            result = cursor.fetchone()
         self._close_connect_db(connect)
         return result
 
@@ -157,3 +157,18 @@ class DataBase:
             cursor.execute(requests_, (login, encrypt_password(password)))
         connect.commit()
         self._close_connect_db(connect)
+
+    def get_last_session_id(self) -> tuple:
+        """
+        Get last session_id
+        """
+        connect = self._connect_db()
+        requests_ = """
+                    SELECT session_id
+                    FROM sessions
+                    WHERE fin_session_time < %s;"""
+        with connect.cursor() as cursor:
+            cursor.execute(requests_, (datetime.datetime.now(),))
+            result = cursor.fetchall()
+        self._close_connect_db(connect)
+        return result

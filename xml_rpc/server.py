@@ -30,6 +30,14 @@ class XML_RPC_Server:
         if test_mode:
             DataBase(self.data_base)._add_test_user()
 
+    @staticmethod
+    def is_not_active_session(data_session: tuple) -> bool:
+        """
+        Check session on activity
+        """
+        _, fin_session_time = data_session
+        return fin_session_time < datetime.datetime.now()
+
     def authorization(self, login: str, password: str) -> client.dumps:
         """
         Method for authorization users
@@ -50,7 +58,8 @@ class XML_RPC_Server:
             seconds=self.max_len_session_in_sec)
         # многие переходят на NanoID,
         # но этого инструмента нет в стандартном наборе
-        # uuid4 - полный рандом без утечки данных
+        # uuid4 - рандомное представление
+        # без задействования чувствительных данных
         session_id = str(uuid4())
 
         db.add_session(
@@ -69,8 +78,8 @@ class XML_RPC_Server:
         with client public data
         """
         db = DataBase(self.data_base)
-        _, fin_session_time = db.get_active_session(session_id)
-        if fin_session_time < datetime.datetime.now():
+
+        if self.is_not_active_session(db.get_active_session(session_id)):
             return client.dumps(
                 client.Fault(
                     401,
@@ -86,10 +95,13 @@ class XML_RPC_Server:
 
         return client.dumps((partial_server_key,), methodresponse=True)
 
-    def get_challenge(self, session_id: str):
+    def get_challenge(self, session_id: str) -> client.dumps:
+        """
+        Get random challenge
+        """
         db = DataBase(self.data_base)
-        _, fin_session_time = db.get_active_session(session_id)
-        if fin_session_time < datetime.datetime.now():
+
+        if self.is_not_active_session(db.get_active_session(session_id)):
             return client.dumps(
                 client.Fault(
                     401,
@@ -99,15 +111,20 @@ class XML_RPC_Server:
             )
 
         session_challenge = secrets.token_urlsafe()
-        print('session_challenge', session_challenge)
         db.add_challenge(session_id, session_challenge)
+
         return client.dumps((session_challenge,), methodresponse=True)
 
+    def read_data_from_db(
+            self, session_id: str, client_sign: str
+    ) -> client.dumps:
+        """
+        Get sample data for future response
 
-
-    def read_data_from_db(self, session_id: str, client_sign: str):
+        in this example - terminate session
+        """
         db = DataBase(self.data_base)
-        if not db.get_active_session(session_id):
+        if self.is_not_active_session(db.get_active_session(session_id)):
             return client.dumps(
                 client.Fault(
                     401,
@@ -125,14 +142,12 @@ class XML_RPC_Server:
                      please try authorization again.'
                 )
             )
-        return 'Подписи идентичны'
-        # выполнить выборку из БД
-        # вернуть полученное значение.
+
+        return client.dumps((db.get_last_session_id(),), methodresponse=True)
 
 
 if __name__ == '__main__':
     server = server.SimpleXMLRPCServer((HOST, PORT))
     server.register_instance(XML_RPC_Server())
-    print('Server run')
+    print('Server run, can to start client')
     server.serve_forever()
-
