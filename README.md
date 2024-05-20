@@ -17,3 +17,6 @@ $ export DATABASE_URL=<url_db as in example>
 $ make init_run_server # build db and start server
 $ make start_client
 ```
+
+* To be continued:
+    > CI/CD, Test_coverage
